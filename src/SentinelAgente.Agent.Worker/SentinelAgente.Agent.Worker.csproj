@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk.Worker">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>dotnet-SentinelAgente.Agent.Worker-53cf8449-cd01-443b-814d-587f7d242405</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SentinelAgente.Agent.Core\SentinelAgente.Agent.Core.csproj" />
+    <ProjectReference Include="..\SentinelAgente.Agent.Windows\SentinelAgente.Agent.Windows.csproj" Condition="'$(RuntimeIdentifier)' == 'win-x64'" />
+    <ProjectReference Include="..\SentinelAgente.Agent.Linux\SentinelAgente.Agent.Linux.csproj" Condition="'$(RuntimeIdentifier)' == 'linux-x64'" />
+    <ProjectReference Include="..\SentinelAgente.Agent.Linux\SentinelAgente.Agent.Linux.csproj" />
+    <ProjectReference Include="..\SentinelAgente.Shared\SentinelAgente.Shared.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.5" />
+  </ItemGroup>
+</Project>
