@@ -24,12 +24,15 @@ public class WindowsSystemMetrics(HwidGenerator hwidGenerator) : ISystemMetrics
         // 2. RAM (Via P/Invoke GlobalMemoryStatusEx)
         GetMemoryInfo(out long totalRam, out long usedRam);
 
-        // 3. Discos (Drives Fixos - Cálculo de % de uso)
+        // 3. Discos (Cálculo em GB)
         var diskUsage = DriveInfo.GetDrives()
             .Where(d => d.IsReady && d.DriveType == DriveType.Fixed)
             .ToDictionary(
                 d => d.Name, 
-                d => Math.Round(((double)(d.TotalSize - d.AvailableFreeSpace) / d.TotalSize) * 100, 2)
+                d => (object)new { 
+                    TotalGb = Math.Round(d.TotalSize / 1024.0 / 1024.0 / 1024.0, 2),
+                    UsedGb = Math.Round((d.TotalSize - d.AvailableFreeSpace) / 1024.0 / 1024.0 / 1024.0, 2)
+                }
             );
 
         return new MetricsPacket(

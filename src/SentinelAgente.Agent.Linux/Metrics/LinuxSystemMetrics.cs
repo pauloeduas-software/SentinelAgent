@@ -5,7 +5,7 @@ using SentinelAgente.Shared.Packets;
 namespace SentinelAgente.Agent.Linux.Metrics;
 
 /// <summary>
-/// Sensor de telemetria específico para Linux.
+/// Sensor de telemetria específico para Linux com tratamento robusto de permissões de disco.
 /// </summary>
 public class LinuxSystemMetrics(HwidGenerator hwidGenerator) : ISystemMetrics
 {
@@ -19,13 +19,28 @@ public class LinuxSystemMetrics(HwidGenerator hwidGenerator) : ISystemMetrics
         // 2. CPU (via delta /proc/stat)
         var cpuUsage = await CalculateCpuUsageAsync();
 
-        // 3. Disco (Cálculo de % de uso)
-        var diskUsage = DriveInfo.GetDrives()
-            .Where(d => d.IsReady && (d.DriveFormat == "ext4" || d.DriveFormat == "xfs"))
-            .ToDictionary(
-                d => d.Name, 
-                d => Math.Round(((double)(d.TotalSize - d.AvailableFreeSpace) / d.TotalSize) * 100, 2)
-            );
+        // 3. Disco (Coleta segura com try-catch por unidade)
+        var diskUsage = new Dictionary<string, object>();
+        
+        foreach (var d in DriveInfo.GetDrives())
+        {
+            try
+            {
+                // Acesso a d.DriveFormat ou d.IsReady pode lançar UnauthorizedAccessException em mountpoints do sistema
+                if (d.IsReady && (d.DriveFormat == "ext4" || d.DriveFormat == "xfs" || d.DriveFormat == "btrfs" || d.DriveFormat == "vfat"))
+                {
+                    diskUsage[d.Name] = new
+                    {
+                        TotalGb = Math.Round(d.TotalSize / 1024.0 / 1024.0 / 1024.0, 2),
+                        UsedGb = Math.Round((d.TotalSize - d.AvailableFreeSpace) / 1024.0 / 1024.0 / 1024.0, 2)
+                    };
+                }
+            }
+            catch (Exception)
+            {
+                // Ignora silenciosamente discos virtuais, protegidos ou sem permissão de leitura de metadados
+            }
+        }
 
         return new MetricsPacket(
             _hwidGenerator.Generate(),
@@ -64,6 +79,8 @@ public class LinuxSystemMetrics(HwidGenerator hwidGenerator) : ISystemMetrics
 
             double totalDelta = total2 - total1;
             double idleDelta = idle2 - idle1;
+
+            if (totalDelta == 0) return 0;
 
             return (1.0 - (idleDelta / totalDelta)) * 100.0;
         }
