@@ -1,4 +1,3 @@
-using System.Runtime.InteropServices;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SentinelAgente.Agent.Core.Communication;
@@ -8,46 +7,23 @@ using SentinelAgente.Agent.Core.Metrics;
 using SentinelAgente.Shared.Packets;
 using SentinelAgente.Agent.Worker;
 
-// Namespaces de Identidade e Inventário
+// Namespaces nativos Linux
 using SentinelAgente.Agent.Linux.Identity;
-
-#if WINDOWS
-using SentinelAgente.Agent.Windows.Identity;
-using SentinelAgente.Agent.Windows.Hardware;
-using SentinelAgente.Agent.Windows.Metrics;
-#endif
-
-// Namespaces de Hardware e Métricas específicos por SO
 using SentinelAgente.Agent.Linux.Hardware;
 using SentinelAgente.Agent.Linux.Metrics;
 
 var builder = Host.CreateApplicationBuilder(args);
 
+// Configuração nativa para Systemd (Linux)
+builder.Services.AddSystemd();
+
 // 1. Configuração do Buffer Offline (10 métricas em RAM)
 builder.Services.AddSingleton(new OfflineBuffer<MetricsPacket>(10));
 
-// 2. Registro de Hardware, Sensores e Inventário (Agnóstico via DI)
-if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-{
-    builder.Services.AddSingleton<IHardwareProvider, ProcHardwareProvider>();
-    builder.Services.AddSingleton<ISystemMetrics, LinuxSystemMetrics>();
-    builder.Services.AddSingleton<IInventoryProvider, LinuxInventoryProvider>();
-}
-else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
-{
-#if WINDOWS
-    // Registro para ambiente Windows (WMI + Registry)
-    builder.Services.AddSingleton<IHardwareProvider, WmiProvider>();
-    builder.Services.AddSingleton<ISystemMetrics, WindowsSystemMetrics>();
-    builder.Services.AddSingleton<IInventoryProvider, WindowsInventoryProvider>();
-#else
-    throw new PlatformNotSupportedException("Este build não contém suporte para Windows.");
-#endif
-}
-else
-{
-    throw new PlatformNotSupportedException("Plataforma não suportada pelo Sentinel.");
-}
+// 2. Registro de Hardware, Sensores e Inventário (Linux Puro)
+builder.Services.AddSingleton<IHardwareProvider, ProcHardwareProvider>();
+builder.Services.AddSingleton<ISystemMetrics, LinuxSystemMetrics>();
+builder.Services.AddSingleton<IInventoryProvider, LinuxInventoryProvider>();
 
 // 3. Registro do Gerador de HWID e Cliente WebSocket
 builder.Services.AddSingleton<HwidGenerator>();
@@ -57,6 +33,7 @@ builder.Services.AddSingleton(sp =>
     var buffer = sp.GetRequiredService<OfflineBuffer<MetricsPacket>>();
     var inventory = sp.GetRequiredService<IInventoryProvider>();
     
+    // URL do Servidor Sentinel
     const string serverUrl = "ws://localhost:5000/agent-hub"; 
     
     return new WssClient(serverUrl, hwidGen, buffer, inventory);

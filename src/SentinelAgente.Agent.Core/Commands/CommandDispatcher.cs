@@ -1,15 +1,14 @@
 using System.Diagnostics;
-using System.Runtime.InteropServices;
 
 namespace SentinelAgente.Agent.Core.Commands;
 
 /// <summary>
-/// Despachador de comandos do sistema operacional.
+/// Despachador de comandos do sistema operacional (Linux Native).
 /// </summary>
 public static class CommandDispatcher
 {
     /// <summary>
-    /// Executa uma ação administrativa no Sistema Operacional host.
+    /// Executa uma ação administrativa no Linux host.
     /// </summary>
     /// <param name="action">Ação solicitada (REBOOT, SHUTDOWN, SUSPEND).</param>
     public static void ExecuteCommand(string action)
@@ -19,47 +18,25 @@ public static class CommandDispatcher
 
         action = action.ToUpperInvariant();
 
-        if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
+        switch (action)
         {
-            switch (action)
-            {
-                case "REBOOT":
-                    fileName = "shutdown";
-                    arguments = "/r /t 0";
-                    break;
-                case "SHUTDOWN":
-                    fileName = "shutdown";
-                    arguments = "/s /t 0";
-                    break;
-                case "SUSPEND":
-                    fileName = "rundll32.exe";
-                    arguments = "powrprof.dll,SetSuspendState 0,1,0";
-                    break;
-            }
-        }
-        else if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
-        {
-            switch (action)
-            {
-                case "REBOOT":
-                    fileName = "reboot";
-                    break;
-                case "SHUTDOWN":
-                    fileName = "shutdown";
-                    arguments = "-h now";
-                    break;
-                case "SUSPEND":
-                    fileName = "systemctl";
-                    arguments = "suspend";
-                    break;
-            }
+            case "REBOOT":
+                fileName = "reboot";
+                break;
+            case "SHUTDOWN":
+                fileName = "shutdown";
+                arguments = "-h now";
+                break;
+            case "SUSPEND":
+                fileName = "systemctl";
+                arguments = "suspend";
+                break;
         }
 
         if (!string.IsNullOrEmpty(fileName))
         {
             try
             {
-                // Inicia o processo de comando de forma silenciosa
                 Process.Start(new ProcessStartInfo
                 {
                     FileName = fileName,
@@ -70,8 +47,7 @@ public static class CommandDispatcher
             }
             catch (Exception ex)
             {
-                // Em um cenário real, aqui enviaríamos um AckPacket de erro para o servidor
-                Console.WriteLine($"[ERRO]: Falha ao executar comando {action}: {ex.Message}");
+                Console.WriteLine($"[SENTINEL]: Erro ao executar {action}: {ex.Message}");
             }
         }
     }

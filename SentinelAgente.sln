@@ -7,8 +7,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SentinelAgente.Shared", "sr
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SentinelAgente.Agent.Core", "src\SentinelAgente.Agent.Core\SentinelAgente.Agent.Core.csproj", "{4B497B1A-0E10-4C9D-A3D4-9C78A4E12346}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SentinelAgente.Agent.Windows", "src\SentinelAgente.Agent.Windows\SentinelAgente.Agent.Windows.csproj", "{4B497B1A-0E10-4C9D-A3D4-9C78A4E12347}"
-EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SentinelAgente.Agent.Linux", "src\SentinelAgente.Agent.Linux\SentinelAgente.Agent.Linux.csproj", "{4B497B1A-0E10-4C9D-A3D4-9C78A4E12348}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SentinelAgente.Agent.Worker", "src\SentinelAgente.Agent.Worker\SentinelAgente.Agent.Worker.csproj", "{4B497B1A-0E10-4C9D-A3D4-9C78A4E12349}"
@@ -45,14 +43,6 @@ Global
 		{4B497B1A-0E10-4C9D-A3D4-9C78A4E12346}.Release|x64.Build.0 = Release|Any CPU
 		{4B497B1A-0E10-4C9D-A3D4-9C78A4E12346}.Release|x86.ActiveCfg = Release|Any CPU
 		{4B497B1A-0E10-4C9D-A3D4-9C78A4E12346}.Release|x86.Build.0 = Release|Any CPU
-		{4B497B1A-0E10-4C9D-A3D4-9C78A4E12347}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{4B497B1A-0E10-4C9D-A3D4-9C78A4E12347}.Debug|x64.Build.0 = Debug|Any CPU
-		{4B497B1A-0E10-4C9D-A3D4-9C78A4E12347}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{4B497B1A-0E10-4C9D-A3D4-9C78A4E12347}.Debug|x86.Build.0 = Debug|Any CPU
-		{4B497B1A-0E10-4C9D-A3D4-9C78A4E12347}.Release|x64.ActiveCfg = Release|Any CPU
-		{4B497B1A-0E10-4C9D-A3D4-9C78A4E12347}.Release|x64.Build.0 = Release|Any CPU
-		{4B497B1A-0E10-4C9D-A3D4-9C78A4E12347}.Release|x86.ActiveCfg = Release|Any CPU
-		{4B497B1A-0E10-4C9D-A3D4-9C78A4E12347}.Release|x86.Build.0 = Release|Any CPU
 		{4B497B1A-0E10-4C9D-A3D4-9C78A4E12348}.Debug|x64.ActiveCfg = Debug|Any CPU
 		{4B497B1A-0E10-4C9D-A3D4-9C78A4E12348}.Debug|x64.Build.0 = Debug|Any CPU
 		{4B497B1A-0E10-4C9D-A3D4-9C78A4E12348}.Debug|x86.ActiveCfg = Debug|Any CPU

@@ -1,59 +1,63 @@
 using System.Security.Cryptography;
 using System.Text;
+using System.Net.NetworkInformation;
 
 namespace SentinelAgente.Agent.Core.Identity;
 
-/// <summary>
-/// Gera um identificador único de hardware (HWID) resiliente a falhas parciais.
-/// </summary>
 public class HwidGenerator(IHardwareProvider hardwareProvider)
 {
     private readonly IHardwareProvider _hardwareProvider = hardwareProvider;
 
-    /// <summary>
-    /// Gera o HWID baseado em um quórum de componentes físicos.
-    /// </summary>
-    /// <returns>Hash SHA256 de 64 caracteres em hexadecimal.</returns>
-    /// <exception cref="InvalidOperationException">Lançada se o quórum mínimo de 2 IDs não for atingido.</exception>
     public string Generate()
     {
-        var validIds = new List<string>();
+        string rawIdentifier = string.Empty;
 
-        // Tenta coletar os 3 pilares de identidade física
-        TryCollect(validIds, _hardwareProvider.GetMotherboardId);
-        TryCollect(validIds, _hardwareProvider.GetCpuId);
-        TryCollect(validIds, _hardwareProvider.GetDiskSerialNumber);
-
-        // Regra de Quórum: Precisamos de pelo menos 2 componentes para garantir a imutabilidade
-        if (validIds.Count < 2)
+        // 1. Tenta identificar via Serial Físico (DMI)
+        var dmiSerial = _hardwareProvider.GetMotherboardId();
+        
+        if (!string.IsNullOrWhiteSpace(dmiSerial))
         {
-            throw new InvalidOperationException(
-                $"Falha crítica de integridade de hardware. Quórum insuficiente para gerar HWID (Encontrados: {validIds.Count}/2).");
+            rawIdentifier = dmiSerial;
+        }
+        else
+        {
+            // 2. Fallback para MAC Address puramente físico
+            rawIdentifier = GetPhysicalMacAddress();
         }
 
-        // Normalização: Ordenação previsível, sem espaços, tudo em minúsculo
-        var normalizedInput = string.Concat(validIds.OrderBy(x => x))
-            .Replace(" ", "")
-            .ToLowerInvariant();
+        // 3. Fallback final: Nome da Máquina (Extremo)
+        if (string.IsNullOrWhiteSpace(rawIdentifier))
+        {
+            rawIdentifier = Environment.MachineName;
+        }
 
-        return ComputeSha256Hash(normalizedInput);
+        // Normalização
+        rawIdentifier = rawIdentifier.Replace("-", "").Replace(":", "").Replace(" ", "").ToLowerInvariant();
+
+        // LOG AGRESSIVO PARA QA
+        Console.WriteLine($"\n[SENTINEL QA] >>> HWID RAW DETECTADO: {rawIdentifier}");
+
+        return ComputeSha256Hash(rawIdentifier);
     }
 
-    private static void TryCollect(List<string> list, Func<string?> collector)
+    private string GetPhysicalMacAddress()
     {
         try
         {
-            var result = collector();
-            if (!string.IsNullOrWhiteSpace(result))
-            {
-                list.Add(result.Trim());
-            }
+            // Filtra apenas interfaces físicas reais (Ethernet e Wi-Fi)
+            // Ignora: docker, veth, lo, br, tun, tap
+            string[] allowedPrefixes = { "en", "eth", "wl" };
+
+            var nic = NetworkInterface.GetAllNetworkInterfaces()
+                .Where(n => n.OperationalStatus == OperationalStatus.Up && 
+                            n.NetworkInterfaceType != NetworkInterfaceType.Loopback &&
+                            allowedPrefixes.Any(p => n.Name.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
+                .OrderBy(n => n.Name)
+                .FirstOrDefault();
+
+            return nic?.GetPhysicalAddress().ToString() ?? string.Empty;
         }
-        catch
-        {
-            // Silenciosamente ignora falhas de componentes individuais para manter a resiliência
-            // Em um cenário real, poderíamos logar essa falha como um aviso técnico
-        }
+        catch { return string.Empty; }
     }
 
     private static string ComputeSha256Hash(string rawData)

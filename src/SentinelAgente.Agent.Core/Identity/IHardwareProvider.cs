@@ -1,22 +1,17 @@
 namespace SentinelAgente.Agent.Core.Identity;
 
 /// <summary>
-/// Define o contrato para provedores de hardware específicos de cada sistema operacional.
+/// Contrato para extração de identificadores puramente físicos de hardware.
 /// </summary>
 public interface IHardwareProvider
 {
     /// <summary>
-    /// Recupera o UUID ou Serial da Placa-mãe.
+    /// Recupera o Serial do Produto ou da Placa-mãe (DMI/BIOS).
     /// </summary>
     string? GetMotherboardId();
 
     /// <summary>
-    /// Recupera o identificador único do Processador.
+    /// Recupera o modelo/ID do processador.
     /// </summary>
     string? GetCpuId();
-
-    /// <summary>
-    /// Recupera o número de série do disco de boot/principal.
-    /// </summary>
-    string? GetDiskSerialNumber();
 }
