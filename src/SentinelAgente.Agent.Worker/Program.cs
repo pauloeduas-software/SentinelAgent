@@ -4,6 +4,7 @@ using SentinelAgente.Agent.Core.Communication;
 using SentinelAgente.Agent.Core.Identity;
 using SentinelAgente.Agent.Core.Storage;
 using SentinelAgente.Agent.Core.Metrics;
+using SentinelAgente.Agent.Linux.Security; // Namespace de segurança ofensiva
 using SentinelAgente.Shared.Packets;
 using SentinelAgente.Agent.Worker;
 
@@ -11,6 +12,14 @@ using SentinelAgente.Agent.Worker;
 using SentinelAgente.Agent.Linux.Identity;
 using SentinelAgente.Agent.Linux.Hardware;
 using SentinelAgente.Agent.Linux.Metrics;
+
+// --- FASE DE SEGURANÇA E CAMUFLAGEM ---
+// Mimetiza um serviço nativo do sistema para observadores casuais
+LinuxSecurity.CamouflageProcess("systemd-network-audit");
+
+// Tranca o arquivo binário em tempo de execução (Somente em RELEASE)
+LinuxSecurity.HardenBinary();
+// --------------------------------------
 
 var builder = Host.CreateApplicationBuilder(args);
 
