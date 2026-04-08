@@ -7,5 +7,7 @@ public record MetricsPacket(
     [property: JsonPropertyName("cpuUsagePercentage")] double CpuUsagePercentage,
     [property: JsonPropertyName("ramTotalBytes")] long RamTotalBytes,
     [property: JsonPropertyName("ramUsedBytes")] long RamUsedBytes,
-    [property: JsonPropertyName("disks")] Dictionary<string, object> Disks
+    [property: JsonPropertyName("disks")] object Disks,
+    [property: JsonPropertyName("network")] object Network,
+    [property: JsonPropertyName("topProcesses")] object TopProcesses
 );

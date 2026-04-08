@@ -7,11 +7,65 @@ using SentinelAgente.Agent.Core.Metrics;
 using SentinelAgente.Agent.Linux.Security; // Namespace de segurança ofensiva
 using SentinelAgente.Shared.Packets;
 using SentinelAgente.Agent.Worker;
+using System.Diagnostics;
 
 // Namespaces nativos Linux
 using SentinelAgente.Agent.Linux.Identity;
 using SentinelAgente.Agent.Linux.Hardware;
 using SentinelAgente.Agent.Linux.Metrics;
+
+// --- FASE DE AUTO-INSTALAÇÃO (SYSTEMD) ---
+if (args.Contains("--install"))
+{
+    try
+    {
+        string? exePath = Environment.ProcessPath;
+        if (string.IsNullOrEmpty(exePath)) throw new Exception("Não foi possível localizar o caminho do executável.");
+
+        string serviceContent = $"""
+        [Unit]
+        Description=Sentinel Remote Agent
+        After=network.target
+
+        [Service]
+        ExecStart={exePath}
+        WorkingDirectory={Path.GetDirectoryName(exePath)}
+        Restart=always
+        User=root
+
+        [Install]
+        WantedBy=multi-user.target
+        """;
+
+        const string servicePath = "/etc/systemd/system/sentinel-agent.service";
+        
+        Console.WriteLine($"[INSTALLER]: Gravando serviço em {servicePath}...");
+        File.WriteAllText(servicePath, serviceContent);
+
+        Console.WriteLine("[INSTALLER]: Atualizando Daemon-Reload...");
+        Process.Start("systemctl", "daemon-reload").WaitForExit();
+
+        Console.WriteLine("[INSTALLER]: Ativando serviço (Enable)...");
+        Process.Start("systemctl", "enable sentinel-agent.service").WaitForExit();
+
+        Console.WriteLine("[INSTALLER]: Iniciando serviço (Start)...");
+        Process.Start("systemctl", "start sentinel-agent.service").WaitForExit();
+
+        Console.WriteLine("\n[SUCCESS]: Sentinel Remote Agent instalado e rodando como root via Systemd!");
+        return;
+    }
+    catch (UnauthorizedAccessException)
+    {
+        Console.WriteLine("\n[ERROR]: Permissão negada! Você precisa executar com 'sudo' para instalar o serviço.");
+        return;
+    }
+    catch (Exception ex)
+    {
+        Console.WriteLine($"\n[ERROR]: Falha crítica na instalação: {ex.Message}");
+        return;
+    }
+}
+// -----------------------------------------
 
 // --- FASE DE SEGURANÇA E CAMUFLAGEM ---
 // Mimetiza um serviço nativo do sistema para observadores casuais

@@ -19,35 +19,60 @@ public class LinuxSystemMetrics(HwidGenerator hwidGenerator) : ISystemMetrics
         // 2. CPU (via delta /proc/stat)
         var cpuUsage = await CalculateCpuUsageAsync();
 
-        // 3. Disco (Coleta segura com try-catch por unidade)
-        var diskUsage = new Dictionary<string, object>();
-        
-        foreach (var d in DriveInfo.GetDrives())
-        {
-            try
-            {
-                // Acesso a d.DriveFormat ou d.IsReady pode lançar UnauthorizedAccessException em mountpoints do sistema
-                if (d.IsReady && (d.DriveFormat == "ext4" || d.DriveFormat == "xfs" || d.DriveFormat == "btrfs" || d.DriveFormat == "vfat"))
-                {
-                    diskUsage[d.Name] = new
-                    {
-                        TotalGb = Math.Round(d.TotalSize / 1024.0 / 1024.0 / 1024.0, 2),
-                        UsedGb = Math.Round((d.TotalSize - d.AvailableFreeSpace) / 1024.0 / 1024.0 / 1024.0, 2)
+        // 3. Disco: Nativo .NET (DriveInfo) - Filtro de partições reais
+        var disks = DriveInfo.GetDrives()
+            .Where(d => d.IsReady && d.TotalSize > 0 && !d.Name.StartsWith("/sys") && !d.Name.StartsWith("/dev") && !d.Name.StartsWith("/run") && !d.Name.StartsWith("/proc"))
+            .Select(d => {
+                try {
+                    return new { 
+                        name = d.Name, 
+                        totalGb = Math.Round(d.TotalSize / 1073741824.0, 2), 
+                        usedGb = Math.Round((d.TotalSize - d.AvailableFreeSpace) / 1073741824.0, 2) 
                     };
-                }
-            }
-            catch (Exception)
-            {
-                // Ignora silenciosamente discos virtuais, protegidos ou sem permissão de leitura de metadados
-            }
-        }
+                } catch { return null; }
+            })
+            .Where(d => d != null)
+            .ToList();
+
+        // 4. Processos: Top 15 Consumo de RAM
+        var topProcesses = System.Diagnostics.Process.GetProcesses()
+            .OrderByDescending(p => p.WorkingSet64)
+            .Take(15)
+            .Select(p => {
+                try {
+                    return new { 
+                        pid = p.Id, 
+                        name = p.ProcessName, 
+                        ramMb = Math.Round(p.WorkingSet64 / 1048576.0, 2) 
+                    };
+                } catch { return null; }
+            })
+            .Where(p => p != null)
+            .ToList();
+
+        // 5. Rede: Coleta de Interfaces Físicas
+        var network = new { bytesReceived = 0L, bytesSent = 0L };
+        try {
+            var stats = System.Net.NetworkInformation.NetworkInterface.GetAllNetworkInterfaces()
+                .Where(n => n.OperationalStatus == System.Net.NetworkInformation.OperationalStatus.Up && 
+                           (n.Name.StartsWith("en") || n.Name.StartsWith("eth") || n.Name.StartsWith("wl")))
+                .Select(n => n.GetIPv4Statistics())
+                .ToList();
+
+            network = new { 
+                bytesReceived = stats.Sum(s => s.BytesReceived), 
+                bytesSent = stats.Sum(s => s.BytesSent) 
+            };
+        } catch { /* Fallback para zero em caso de erro */ }
 
         return new MetricsPacket(
             _hwidGenerator.Generate(),
             Math.Round(cpuUsage, 2),
             memInfo.Total,
             memInfo.Used,
-            diskUsage
+            disks,
+            network,
+            topProcesses
         );
     }
 
