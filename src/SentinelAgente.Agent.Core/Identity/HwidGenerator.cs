@@ -10,54 +10,22 @@ public class HwidGenerator(IHardwareProvider hardwareProvider)
 
     public string Generate()
     {
-        string rawIdentifier = string.Empty;
-
-        // 1. Tenta identificar via Serial Físico (DMI)
-        var dmiSerial = _hardwareProvider.GetMotherboardId();
+        // 1. Identificação via Serial Físico Real (DMI/BIOS)
+        // Requer privilégios de ROOT para ler de /sys/class/dmi/id/
+        var hwid = _hardwareProvider.GetMotherboardId();
         
-        if (!string.IsNullOrWhiteSpace(dmiSerial))
+        if (string.IsNullOrWhiteSpace(hwid))
         {
-            rawIdentifier = dmiSerial;
-        }
-        else
-        {
-            // 2. Fallback para MAC Address puramente físico
-            rawIdentifier = GetPhysicalMacAddress();
-        }
-
-        // 3. Fallback final: Nome da Máquina (Extremo)
-        if (string.IsNullOrWhiteSpace(rawIdentifier))
-        {
-            rawIdentifier = Environment.MachineName;
+            throw new Exception("Falha crítica de identificação: Não foi possível ler o ID único de hardware. O Agente deve rodar como ROOT.");
         }
 
         // Normalização
-        rawIdentifier = rawIdentifier.Replace("-", "").Replace(":", "").Replace(" ", "").ToLowerInvariant();
+        hwid = hwid.Replace("-", "").Replace(":", "").Replace(" ", "").ToLowerInvariant();
 
         // LOG AGRESSIVO PARA QA
-        Console.WriteLine($"\n[SENTINEL QA] >>> HWID RAW DETECTADO: {rawIdentifier}");
+        Console.WriteLine($"\n[SENTINEL QA] >>> HWID RAW DETECTADO: {hwid}");
 
-        return ComputeSha256Hash(rawIdentifier);
-    }
-
-    private string GetPhysicalMacAddress()
-    {
-        try
-        {
-            // Filtra apenas interfaces físicas reais (Ethernet e Wi-Fi)
-            // Ignora: docker, veth, lo, br, tun, tap
-            string[] allowedPrefixes = { "en", "eth", "wl" };
-
-            var nic = NetworkInterface.GetAllNetworkInterfaces()
-                .Where(n => n.OperationalStatus == OperationalStatus.Up && 
-                            n.NetworkInterfaceType != NetworkInterfaceType.Loopback &&
-                            allowedPrefixes.Any(p => n.Name.StartsWith(p, StringComparison.OrdinalIgnoreCase)))
-                .OrderBy(n => n.Name)
-                .FirstOrDefault();
-
-            return nic?.GetPhysicalAddress().ToString() ?? string.Empty;
-        }
-        catch { return string.Empty; }
+        return ComputeSha256Hash(hwid);
     }
 
     private static string ComputeSha256Hash(string rawData)

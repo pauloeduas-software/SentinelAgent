@@ -1,47 +1,52 @@
-# SentinelAgente - O Operário de Inventário (Sentinel v2.0)
+# Sentinel Agent 🛡️
+> **Core RMM & Telemetry Provider for Linux Systems**
 
-O **SentinelAgente** é a espinha dorsal de coleta do ecossistema Sentinel. Desenvolvido como um **Worker Service** de alta performance em .NET 8, ele é projetado para operar de forma invisível no sistema operacional, garantindo a coleta ininterrupta de telemetria e a execução imediata de comandos remotos.
+![.NET 8](https://img.shields.io/badge/.NET-8.0-512BD4?logo=dotnet)
+![Linux Native](https://img.shields.io/badge/Platform-Linux-FCC624?logo=linux)
+![Security](https://img.shields.io/badge/Security-Root--Only-red)
 
-## 🚀 Funcionalidades Principais
+O **Sentinel Agent** é o componente de baixo nível do ecossistema, responsável pela extração de dados brutos do Kernel Linux e execução de comandos administrativos. Projetado para máxima performance e mínima pegada de memória.
 
-### 1. Monitoramento de Performance (Real-time)
-- **CPU**: Coleta de uso global com média aritmética para precisão.
-- **RAM**: Leitura instantânea via P/Invoke (Windows) e parse direto de `/proc/meminfo` (Linux).
-- **Armazenamento**: Detalhamento em Gigabytes (Total/Usado) de todas as partições físicas, com lógica resiliente a permissões de sistema.
+## 📁 Estrutura do Projeto e Responsabilidade dos Arquivos
 
-### 2. Inventário Profundo (ITAM)
-- **Identidade imutável (HWID)**: Geração de hash SHA256 baseado em um quórum de hardware (Motherboard, CPU, Disk).
-- **Software**: Varredura recursiva do Registro do Windows para listar programas instalados.
-- **Rede**: Descoberta de IP Local e MAC Address real, filtrando interfaces virtuais.
+### `src/SentinelAgente.Agent.Worker/`
+*   **`Program.cs`**: Ponto de entrada. Gerencia a trava de privilégios de Root, orquestra a Injeção de Dependência (DI) e configura a auto-instalação no Systemd.
+*   **`AgentWorker.cs`**: O orquestrador principal. Mantém o loop de execução infinita que dispara a coleta de métricas.
 
-### 3. Gestão Remota Ativa (RMM)
-- **Command Dispatcher**: Motor de execução que recebe instruções via WebSocket para realizar `Reboot`, `Shutdown` ou `Suspend` de forma nativa no SO.
+### `src/SentinelAgente.Agent.Core/`
+*   **`Identity/HwidGenerator.cs`**: Lógica de identidade única via Serial DMI/BIOS.
+*   **`Communication/WssClient.cs`**: Cliente WebSocket resiliente com buffer offline.
+*   **`Commands/CommandDispatcher.cs`**: Executor de comandos nativos do Linux.
 
-### 4. Resiliência de Rede
-- **Exponential Backoff**: Algoritmo de reconexão inteligente com Jitter para evitar sobrecarga no servidor.
-- **Offline Buffer**: Fila FIFO circular em RAM que armazena métricas durante quedas de internet.
+### `src/SentinelAgente.Agent.Linux/`
+*   **`Metrics/LinuxSystemMetrics.cs`**: Coleta de CPU, RAM, Discos e Rede (Gb/Kbps).
+*   **`Security/LinuxSecurity.cs`**: Implementa o Modo Stealth e Imutabilidade do Binário.
+*   **`Hardware/ProcHardwareProvider.cs`**: Leitura direta de hardware via `/sys` e `/proc`.
 
-## 🛠️ Stack Tecnológica
-- **Linguagem**: C# 12
-- **Framework**: .NET 8 (Long-Term Support)
-- **Comunicação**: WebSockets (System.Net.WebSockets)
-- **Internals**: P/Invoke (Win32 API), WMI, Procfs, Sysfs.
+### `src/SentinelAgente.Shared/`
+*   **`Packets/`**: Contratos de dados imutáveis (JSON models) para comunicação com a API.
+*   **`Enums/`**: Definições globais de status e estados do sistema.
 
-## 📁 Estrutura do Projeto
-- `SentinelAgente.Agent.Core`: Lógica de negócio, resiliência e interfaces.
-- `SentinelAgente.Agent.Windows`: Implementações específicas para Windows.
-- `SentinelAgente.Agent.Linux`: Implementações nativas para sistemas Unix.
-- `SentinelAgente.Agent.Worker`: O host executável e container de Injeção de Dependência.
-- `SentinelAgente.Shared`: Contratos e DTOs de comunicação.
+## 🛠️ Instalação e Configuração
 
-## ⚙️ Como Rodar
-1. **Pré-requisitos**: SDK do .NET 8.0 instalado.
-2. **Configuração**: Ajuste a URL do servidor no `Program.cs` do Worker.
-3. **Execução**:
-   ```bash
-   cd src/SentinelAgente.Agent.Worker
-   dotnet run
-   ```
+### Instalação como Serviço (Systemd)
+Para instalar o agente permanentemente e iniciar com o boot:
+```bash
+sudo dotnet run --project src/SentinelAgente.Agent.Worker/SentinelAgente.Agent.Worker.csproj --install
+```
 
-## ⚠️ Notas de Build (Cross-Platform)
-O projeto utiliza **Compilação Condicional**. Ao compilar em ambientes Linux, as dependências do Windows são automaticamente ignoradas pelo compilador para garantir a integridade do binário.
+### Gerenciamento do Serviço
+*   **Pausar:** `sudo systemctl stop sentinel-agent.service`
+*   **Remover:** `sudo rm /etc/systemd/system/sentinel-agent.service && sudo systemctl daemon-reload`
+
+### Execução em Tempo Real (Debug)
+Para rodar manualmente e ver os logs no terminal:
+```bash
+sudo dotnet run --project src/SentinelAgente.Agent.Worker/SentinelAgente.Agent.Worker.csproj
+```
+*   **Parar:** Pressione `Ctrl + C` ou use `sudo pkill -f SentinelAgente.Agent.Worker`.
+
+## 🔒 Regras de Operação
+1.  **Strict Root:** O agente encerra imediatamente se executado sem sudo.
+2.  **DMI Identity:** O HWID é gerado estritamente via hardware físico.
+3.  **Grouping:** Processos são agregados por nome para maior clareza.

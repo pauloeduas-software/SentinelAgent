@@ -14,6 +14,17 @@ using SentinelAgente.Agent.Linux.Identity;
 using SentinelAgente.Agent.Linux.Hardware;
 using SentinelAgente.Agent.Linux.Metrics;
 
+// --- VERIFICAÇÃO DE PRIVILÉGIOS (ROOT ONLY) ---
+if (Environment.UserName != "root")
+{
+    Console.ForegroundColor = ConsoleColor.Red;
+    Console.WriteLine("\n[ERRO CRÍTICO]: O Sentinel Agent requer privilégios de ROOT para operar.");
+    Console.WriteLine("Por favor, execute com 'sudo dotnet run' ou instale como serviço.");
+    Console.ForegroundColor = ConsoleColor.Gray;
+    return;
+}
+// ----------------------------------------------
+
 // --- FASE DE AUTO-INSTALAÇÃO (SYSTEMD) ---
 if (args.Contains("--install"))
 {
